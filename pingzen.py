@@ -45,15 +45,15 @@ def signal_handler(sig, frame):
 if __name__ == '__main__':
     
     # User-specified variables
-    bars    = 0;    # 0 = terminal width, else max(bars, longest_name, longest_addr)
-    delay    = 1;    # refresh rate, secs
+    bars    = 0; # 0 = terminal width, else max(bars, longest_name, longest_addr)
+    delay   = 1; # refresh rate, secs
     
     # Internal variables
     stop    = False
-    useaddr    = False
-    paused    = False
-    refresh    = False
-    count    = 1
+    useaddr = False
+    paused  = False
+    refresh = False
+    count   = 1
     
     # Validation
     if len(sys.argv) == 1 : sys.exit('pass filepath as argument')
