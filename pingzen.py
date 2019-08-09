@@ -11,14 +11,14 @@ def initpings():
     return [deque([4] * 1000, 1000) for x in range(len(names))]
 
 def pinger(addr):
-    while not stop :
+    while not stop:
         cmd_result = getoutput('fping -c {} -t 250 -r1 -q {}'.format(count, addr))
         res[addrs.index(addr)] = int(''.join(re.findall(r'\d+/(\d+)/\d+|count (4)', cmd_result)[0]))
         sleep(delay * 0.7)
 
 def writepings():
     global pings
-    while not stop :
+    while not stop:
         for i in range(len(names)):
             pings[i].append(res[i])
         sleep(delay * 1.0)
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     
     # User-specified variables
     bars    = 0; # 0 = terminal width, else max(bars, longest_name, longest_addr)
-    delay   = 1; # refresh rate, secs
+    delay    = 1; # refresh rate, secs
     
     # Internal variables
     stop    = False
@@ -83,10 +83,10 @@ if __name__ == '__main__':
     
     # Init curses
     scr = cs.initscr()
-    cs.start_color()
     scr.attron(cs.A_BOLD)
     cs.curs_set(0)
     cs.noecho()
+    cs.start_color()
     cs.use_default_colors()
     cs.init_pair(1, cs.COLOR_WHITE, cs.COLOR_RED)
     cs.init_pair(2, cs.COLOR_WHITE, cs.COLOR_GREEN)
@@ -108,9 +108,15 @@ if __name__ == '__main__':
         xlen = min(xmax, minlen) if bars != 0 else xmax
         for y in range(ylen):
             for x in reversed(range(xlen)):
-                scr.addch(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], cs.color_pair(pings[y][x-xlen]+1))
+                try:
+                    scr.addch(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], cs.color_pair(pings[y][x-xlen]+1))
+                except (cs.error):
+                    pass
             if paused:
-                scr.addch(y, xlen-1, '{:{l}.{l}}'.format('PAUSED', l=ylen)[y], cs.color_pair(3))
+                try:
+                    scr.addch(y, xlen-1, '{:{l}.{l}}'.format('PAUSED', l=ylen)[y], cs.color_pair(3))
+                except (cs.error):
+                    pass
         scr.refresh()
         for i in range(10):
             if refresh:
