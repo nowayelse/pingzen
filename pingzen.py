@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import curses as cs, threading as tr, sys, os, re, signal
+import sys, os, re, signal
+import curses as cs
+import threading as tr
+from ipaddress import ip_address as isipv4
 from subprocess import getoutput
 from collections import deque
 from shutil import which
@@ -66,21 +69,21 @@ if __name__ == '__main__':
         if 0 <= bars < 1000 and isinstance(bars, int): pass
     except: bars = 0
 
-    # Parse config
+    # Parse and validate config
     addrs = []
     names = []
     with open(sys.argv[1]) as file:
         for line in file:
             if line[0] == "#" : continue
             if len((line.strip().split(' '))) != 2 : continue
+            try:
+                isipv4(line.split()[1])
+                addrs.append(line.split()[1])
+            except: continue
             names.append(line.split()[0])
-            addrs.append(line.split()[1])
     if not names : sys.exit('config is blank')
-    minlen = max(len(max(names+addrs, key = len)), bars)
-    pings = initpings()
-    res = [4] * len(names)
-    signal.signal(signal.SIGINT, signal_handler)
     
+
     # Init curses
     scr = cs.initscr()
     scr.attron(cs.A_BOLD)
@@ -94,8 +97,11 @@ if __name__ == '__main__':
     cs.init_pair(5, -1, -1)
     
     # Init threads
-    for addr in addrs: 
-        tr.Thread(target = pinger, args = (addr,)).start()
+    minlen = max(len(max(names+addrs, key = len)), bars)
+    pings = initpings()
+    res = [4] * len(names)
+    signal.signal(signal.SIGINT, signal_handler)
+    for addr in addrs : tr.Thread(target = pinger, args = (addr,)).start()
     tr.Thread(target = listenkey, args = ()).start()
     tr.Thread(target = writepings, args = ()).start()
     sleep(.1)
@@ -110,13 +116,11 @@ if __name__ == '__main__':
             for x in reversed(range(xlen)):
                 try:
                     scr.addch(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], cs.color_pair(pings[y][x-xlen]+1))
-                except (cs.error):
-                    pass
+                except(cs.error): pass
             if paused:
                 try:
                     scr.addch(y, xlen-1, '{:{l}.{l}}'.format('PAUSED', l=ylen)[y], cs.color_pair(3))
-                except (cs.error):
-                    pass
+                except(cs.error): pass
         scr.refresh()
         for i in range(10):
             if refresh:
