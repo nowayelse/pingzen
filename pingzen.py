@@ -33,7 +33,7 @@ class Target(Props):
         self.alive = True
         self.name = name
         self.addr = addr
-        self.__lastreport = 2
+        self.__lastreport = 3
         self.reportinit()
         tr.Thread(target=self.__ping, args=(self.addr,)).start()
         tr.Thread(target=self.__reportset, args=()).start()
@@ -44,7 +44,7 @@ class Target(Props):
     def __ping(self, addr):
         while self.alive:
             if self.pause:
-                self.__lastreport = 2
+                self.__lastreport = 3
                 xsleep(delay*0.7)
                 continue
             count = 1000 if self.flood and fflag else 1
@@ -52,17 +52,17 @@ class Target(Props):
                 'timeout {} ping {} -c {} {} || echo " 0 received"'.
                     format(min(delay*0.7, 0.7), fflag, count, addr)))[0])
             if rcv == 0:
-                self.__lastreport = 0
+                self.__lastreport = 1
                 xsleep(delay*0.1)
             elif rcv > 1:
-                self.__lastreport = 4
+                self.__lastreport = 5
                 xsleep(delay*0.1)
             elif rcv == 1:
-                self.__lastreport = 1
+                self.__lastreport = 2
                 xsleep(delay*0.5)
     
     def reportinit(self):
-        self.__report = deque([2] * 1000, 1000)
+        self.__report = deque([3] * 1000, 1000)
     
     def __reportset(self):
         while self.alive:
@@ -253,7 +253,7 @@ if __name__ == '__main__':
             for x in reversed(range(xlen)):
                 try:
                     scr.addch(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], \
-                      cs.color_pair(zen.targets[y].getreport()[x-xlen]+1))
+                      cs.color_pair(zen.targets[y].getreport()[x-xlen]))
                 except: pass
         try:
             scr.addch(zen.sel, 0, clist[zen.sel][0], cs.color_pair(6))
