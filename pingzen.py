@@ -11,10 +11,8 @@ from re import findall
 from ipaddress import ip_address as isipv4
 from subprocess import getoutput
 from collections import deque
-from shutil import which
 from time import sleep
 from time import time as now
-from scapy.all import *
 
 
 class Props:
@@ -35,66 +33,24 @@ class Target(Props):
         self.alive = True
         self.name = name
         self.addr = addr
-        # self.iface = self.__getiface(self.addr)
         self.__lastreport = 2
         self.reportinit()
-        self.__pingstart(self.addr)
+        tr.Thread(target=self.__ping, args=(self.addr,)).start()
         tr.Thread(target=self.__reportset, args=()).start()
     
-    ''' Not need yet
-    def __getiface(self, addr):
-        return findall(r'dev (\S+)', getoutput('ip r g {}'.format(addr)))[0]
-    '''
-    
     def __pingstart(self, addr):
-        tr.Thread(target=self.__fping if usefping else self.__cping,
-            args=(addr,)).start()
+        tr.Thread(target=self.__ping, args=(addr,)).start()
     
-    def __fping(self, addr):
-        while self.alive:
-            self.__lastreport = 2 if self.pause else \
-                    int(findall(r'\d+/(\d+)/\d+', getoutput(
-                    'fping -c1 -t250 -r0 -q {}'.format(addr)))[0])
-            sleep(delay*0.7)
-    
-    def __sping(self, addr):
-        logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-        conf.verb = 0
-        conf.logLevel = 0
-        pkt = IP(dst=addr)/ICMP()
-        while self.alive:
-            while self.alive and self.pause:
-                self.__lastreport = 2
-                sleep(delay*0.7)
-            via = (findall(r'via (\S+)',
-                    getoutput('ip r g {}'.format(addr)))+[addr])[0]
-            ans, _ = arping(via, timeout=delay*0.7)
-            while len(ans) >= 1 and self.alive and not self.pause:
-                if self.flood:
-                    time_start = now()
-                    send(pkt, inter=0, count=100, verbose=0)
-                    if now()-time_start > 2.0:
-                        self.__lastreport = 0
-                        ans = []
-                    else:
-                        self.__lastreport = 4
-                else:
-                    ans, _ = sr(pkt, retry=0, timeout=delay*0.5, verbose=0)
-                    if len(ans) >= 1:
-                        self.__lastreport = 1
-                        sleep(delay*0.7)
-            self.__lastreport = 0
-    
-    def __cping(self, addr):
+    def __ping(self, addr):
         while self.alive:
             if self.pause:
                 self.__lastreport = 2
                 sleep(delay*0.7)
                 continue
-            count = 1000 if self.flood else 1
+            count = 1000 if self.flood and fflag else 1
             rcv = int(findall(r'(\d+) received', getoutput(
-                'timeout {} ping -f -c {} {} || echo " 0 received"'.
-                    format(min(delay*0.7, 0.7), count, addr)))[0])
+                'timeout {} ping {} -c {} {} || echo " 0 received"'.
+                    format(min(delay*0.7, 0.7), fflag, count, addr)))[0])
             if rcv == 0:
                 self.__lastreport = 0
                 sleep(delay*0.1)
@@ -122,26 +78,12 @@ class Zen(Props):
     def __init__(self):
         Props.__init__(self)
         self.targets = []
-        self.__validate()
         self.configupdate()
         tr.Thread(target=self.check, args=()).start()
         self.sel = None
     
     def __len__(self):
         return len(self.targets)
-    
-    def __validate(self):
-        global delay, bars
-        if usefping and not which('fping'):
-            terminate('Fping is required')
-        try:
-            if .1 < delay < 600: pass
-        except:
-            delay = 1.0
-        try:
-            if 0 <= bars < 1000 and isinstance(bars, int): pass
-        except:
-            bars = 0
     
     def configupdate(self):
         names, addrs = [], []
@@ -222,7 +164,7 @@ def listenkey():
     if key == ord ('d') : zen.delete()
     if key == ord ('p') : zen.reprop('pause')
     if key == ord ('r') : zen.refresh()
-    if key == ord ('s') : terminate()
+    if key == ord ('x') : terminate()
     if key == (27 and 91 and 65) : zen.reselect(-1)
     if key == (27 and 91 and 66) : zen.reselect(1)
 
@@ -255,28 +197,24 @@ if __name__ == '__main__':
             '  p  Un/pause pings\n'+ \
             '  r  Clear pings history\n'+ \
             '     UP/DOWN Arrows to select certain item for flood/pause\n'+ \
-            '  s  Exit program, or ctrl-c'
-    args = argparse.ArgumentParser(add_help=False, description=helpprog, \
+            '  x  Exit program, or ctrl-c'
+    args = argparse.ArgumentParser(description=helpprog,
         formatter_class=argparse.RawTextHelpFormatter)
-    args.add_argument('-b', action="store", dest="bars", type=int, \
+    args.add_argument('-a', dest='useaddr', action='store_true',
+        help='Show addresses instead of hostnames')
+    args.add_argument('-b', dest="bars", type=int,
         default=0, help="Columns to fill. 0 for terminal width ")
-    args.add_argument('-t', action="store", dest="delay", type=float,\
+    args.add_argument('-t', dest="delay", type=float,
         default=1.0, help="Delay between ping requests")
-    args.add_argument('-o', action="store_true", dest="usefping", \
-        help="Use Fping instead of Scapy which needs a root and allows flood")
-    args.add_argument('-f', action="store", dest="filename", type=str,\
-        default='', help=helpfile)
-    globals().update(args.parse_args().__dict__)
-    
-    if not filename:
-        args.print_help()
-        sys.exit()
-    if not usefping and os.geteuid() != 0:
-        sys.exit('Scapy requires root privileges. Use -o for Fping insted')
-    
+    args.add_argument('filename', type=str, help=helpfile)
+    globals().update(args.parse_args(
+        args=None if sys.argv[1:] else ['--help']).__dict__)
+
     ''' Specify Internal variables '''
-    useaddr = False
+    fflag = '-f' if os.geteuid() == 0 else ''
     exit_msg = ''
+    if not .1 <= delay < 600: delay = 1.0
+    if not 0 <= bars < 1000: bars = 0
     
     ''' Init curses '''
     scr = cs.initscr()
