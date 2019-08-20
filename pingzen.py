@@ -47,7 +47,7 @@ class Target(Props):
     '''
     
     def __pingstart(self, addr):
-        tr.Thread(target=self.__fping if usefping else self.__sping,
+        tr.Thread(target=self.__fping if usefping else self.__cping,
             args=(addr,)).start()
     
     def __fping(self, addr):
@@ -84,6 +84,26 @@ class Target(Props):
                         self.__lastreport = 1
                         sleep(delay*0.7)
             self.__lastreport = 0
+    
+    def __cping(self, addr):
+        while self.alive:
+            if self.pause:
+                self.__lastreport = 2
+                sleep(delay*0.7)
+                continue
+            count = 1000 if self.flood else 1
+            rcv = int(findall(r'(\d+) received', getoutput(
+                'timeout {} ping -f -c {} {} || echo " 0 received"'.
+                    format(min(delay*0.7, 0.7), count, addr)))[0])
+            if rcv == 0:
+                self.__lastreport = 0
+                sleep(delay*0.1)
+            elif rcv > 1:
+                self.__lastreport = 4
+                sleep(delay*0.1)
+            elif rcv == 1:
+                self.__lastreport = 1
+                sleep(delay*0.5)
     
     def reportinit(self):
         self.__report = deque([2] * 1000, 1000)
