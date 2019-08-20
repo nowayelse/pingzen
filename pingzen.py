@@ -45,7 +45,7 @@ class Target(Props):
         while self.alive:
             if self.pause:
                 self.__lastreport = 2
-                sleep(delay*0.7)
+                xsleep(delay*0.7)
                 continue
             count = 1000 if self.flood and fflag else 1
             rcv = int(findall(r'(\d+) received', getoutput(
@@ -53,13 +53,13 @@ class Target(Props):
                     format(min(delay*0.7, 0.7), fflag, count, addr)))[0])
             if rcv == 0:
                 self.__lastreport = 0
-                sleep(delay*0.1)
+                xsleep(delay*0.1)
             elif rcv > 1:
                 self.__lastreport = 4
-                sleep(delay*0.1)
+                xsleep(delay*0.1)
             elif rcv == 1:
                 self.__lastreport = 1
-                sleep(delay*0.5)
+                xsleep(delay*0.5)
     
     def reportinit(self):
         self.__report = deque([2] * 1000, 1000)
@@ -67,7 +67,7 @@ class Target(Props):
     def __reportset(self):
         while self.alive:
             self.__report.append(self.__lastreport)
-            sleep(delay * 1.0)
+            xsleep(delay * 1.0)
     
     def getreport(self):
         return self.__report
@@ -142,7 +142,7 @@ class Zen(Props):
             for i in self.targets:
                 if not i.alive:
                     self.targets.remove(i)
-            sleep(0.01)
+            xsleep(0.01)
         terminate()
     
     def delete(self):
@@ -154,6 +154,14 @@ class Zen(Props):
     def refresh(self):
         for i in self.targets:
             i.reportinit()
+
+def xsleep(time):
+    sec = int(time)
+    msec = round(time - sec, 3)
+    for i in range(sec*10):
+        if stop: return
+        sleep(0.1)
+    sleep(msec)
 
 def listenkey():
     global useaddr
@@ -172,15 +180,14 @@ def signal_handler(sig, frame):
     terminate()
 
 def terminate(msg=''):
-    global exit_msg
+    global stop
+    stop = True
     try:
         for i in zen.targets:
             i.alive = False
     except: pass
-    sleep(.1)
-    exit_msg = msg
     cs.endwin()
-    sys.exit(exit_msg)
+    sys.exit(msg)
 
 
 if __name__ == '__main__':
@@ -212,9 +219,9 @@ if __name__ == '__main__':
 
     ''' Specify Internal variables '''
     fflag = '-f' if os.geteuid() == 0 else ''
-    exit_msg = ''
-    if not .1 <= delay < 600: delay = 1.0
-    if not 0 <= bars < 1000: bars = 0
+    stop = False
+    if not .1 <= delay <= 600: delay = 1.0
+    if not 0 <= bars <= 1000: bars = 0
     
     ''' Init curses '''
     scr = cs.initscr()
