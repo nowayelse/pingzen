@@ -91,7 +91,7 @@ class Zen(Props):
             terminate('Config not found')
         with open(filename) as file:
             for line in file:
-                if line[0] == "#":
+                if line.strip()[0] == "#":
                     continue
                 try:
                     name, addr = line.strip().split()[:2]
@@ -252,11 +252,11 @@ if __name__ == '__main__':
         for y in range(ylen):
             for x in reversed(range(xlen)):
                 try:
-                    scr.addch(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], \
+                    scr.addstr(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], \
                       cs.color_pair(zen.targets[y].getreport()[x-xlen]))
                 except: pass
         try:
-            scr.addch(zen.sel, 0, clist[zen.sel][0], cs.color_pair(6))
+            scr.addstr(zen.sel, 0, clist[zen.sel][0], cs.color_pair(6))
         except: pass
         scr.refresh()
         listenkey()
