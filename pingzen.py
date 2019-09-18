@@ -48,14 +48,17 @@ class Target(Props):
                 xsleep(delay*0.7)
                 continue
             count = 1000 if self.flood and fflag else 1
-            rcv = int(findall(r'(\d+) received', getoutput(
-                'timeout {} ping {} -c {} {} || echo " 0 received"'.
-                    format(min(delay*0.7, 0.7), fflag, count, addr)))[0])
+            try:
+                rcv = int(findall(r'(\d+) received', getoutput(
+                    'timeout {} ping {} -c {} {} || echo " 0 received"'.
+                        format(min(delay*0.7, 0.7), fflag, count, addr)))[0])
+            except Exception as e:
+                pass
             if rcv == 0:
                 self.__lastreport = 1
                 xsleep(delay*0.1)
             elif rcv > 1:
-                self.__lastreport = 5
+                self.__lastreport = 4
                 xsleep(delay*0.1)
             elif rcv == 1:
                 self.__lastreport = 2
@@ -225,8 +228,7 @@ if __name__ == '__main__':
     
     ''' Init curses '''
     scr = cs.initscr()
-    scr.attron(cs.A_BOLD)
-    scr.timeout(40)
+    scr.timeout(200)
     cs.curs_set(0)
     cs.noecho()
     cs.start_color()
@@ -234,9 +236,7 @@ if __name__ == '__main__':
     cs.init_pair(1, cs.COLOR_WHITE, cs.COLOR_RED)    # Reached
     cs.init_pair(2, cs.COLOR_WHITE, cs.COLOR_GREEN)  # Unreached
     cs.init_pair(3, -1, -1)                          # Paused
-    cs.init_pair(4, cs.COLOR_RED, -1)                # Paused red
-    cs.init_pair(5, cs.COLOR_WHITE, cs.COLOR_YELLOW) # Flooded
-    cs.init_pair(6, cs.COLOR_WHITE, cs.COLOR_BLACK)  # Selected
+    cs.init_pair(4, cs.COLOR_WHITE, cs.COLOR_YELLOW) # Flooded
     
     ''' Init threads '''
     zen = Zen()
@@ -253,10 +253,10 @@ if __name__ == '__main__':
             for x in reversed(range(xlen)):
                 try:
                     scr.addstr(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], \
-                      cs.color_pair(zen.targets[y].getreport()[x-xlen]))
+                      cs.color_pair(zen.targets[y].getreport()[x-xlen]) | cs.A_BOLD)
                 except: pass
         try:
-            scr.addstr(zen.sel, 0, clist[zen.sel][0], cs.color_pair(6))
+            scr.addstr(zen.sel, 0, clist[zen.sel][0], cs.color_pair(3) | cs.A_BOLD | cs.A_REVERSE)
         except: pass
         scr.refresh()
         listenkey()
