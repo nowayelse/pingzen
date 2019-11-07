@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 # -*- coding: utf-8 -*-
 
 import sys
@@ -9,7 +9,7 @@ import curses as cs
 import threading as tr
 from re import findall
 from ipaddress import ip_address as isipv4
-from subprocess import getoutput
+from subprocess import getoutput, Popen
 from collections import deque
 from time import sleep
 from time import time as now
@@ -89,7 +89,9 @@ class Zen(Props):
         return len(self.targets)
     
     def configupdate(self):
+        global filename
         names, addrs = [], []
+        filename = os.path.abspath(os.path.expanduser(filename))
         if not os.path.exists(filename):
             terminate('Config not found')
         with open(filename) as file:
@@ -167,12 +169,14 @@ def xsleep(time):
     sleep(msec)
 
 def listenkey():
-    global useaddr
+    global useaddr, showhelp
     key = scr.getch()
     if key == ord ('a') : useaddr = not useaddr
     if key == ord ('c') : zen.configupdate()
     if key == ord ('f') : zen.reprop('flood')
     if key == ord ('d') : zen.delete()
+    if key == ord ('e') : Popen(['nohup', 'leafpad', filename], preexec_fn=os.setpgrp)
+    if key == ord ('h') : showhelp = not showhelp
     if key == ord ('p') : zen.reprop('pause')
     if key == ord ('r') : zen.refresh()
     if key == ord ('x') : terminate()
@@ -203,7 +207,9 @@ if __name__ == '__main__':
             '  a  Switch between names and addresses\n'+ \
             '  c  Reread config file\n'+ \
             '  d  Delete target\n'+ \
+            '  e  Edit config file\n'+ \
             '  f  Switch flood mode\n'+ \
+            '  h  Show this help\n'+ \
             '  p  Un/pause pings\n'+ \
             '  r  Clear pings history\n'+ \
             '     UP/DOWN Arrows to select certain item for flood/pause\n'+ \
@@ -223,6 +229,7 @@ if __name__ == '__main__':
     ''' Specify Internal variables '''
     fflag = '-f' if os.geteuid() == 0 else ''
     stop = False
+    showhelp = False
     if not .1 <= delay <= 600: delay = 1.0
     if not 0 <= bars <= 1000: bars = 0
     
@@ -252,11 +259,15 @@ if __name__ == '__main__':
         for y in range(ylen):
             for x in reversed(range(xlen)):
                 try:
-                    scr.addstr(y, x, '{:{l}.{l}}'.format(clist[y], l=xlen)[x], \
-                      cs.color_pair(zen.targets[y].getreport()[x-xlen]) | cs.A_BOLD)
+                    scr.addch(y, x, '{:{l}.{l}}'.format(
+                        clist[y] if not showhelp \
+                        else helpprog.splitlines()[y], l=xlen)[x], \
+                        cs.color_pair(zen.targets[y].getreport()[x-xlen]) \
+                        | cs.A_BOLD)
                 except: pass
         try:
-            scr.addstr(zen.sel, 0, clist[zen.sel][0], cs.color_pair(3) | cs.A_BOLD | cs.A_REVERSE)
+            scr.addch(zen.sel, 0, clist[zen.sel][0], cs.color_pair(3) \
+                | cs.A_BOLD | cs.A_REVERSE)
         except: pass
         scr.refresh()
         listenkey()
