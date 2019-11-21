@@ -83,7 +83,6 @@ class Zen(Props):
         self.targets = []
         self.configupdate()
         tr.Thread(target=self.check, args=()).start()
-        self.sel = None
     
     def __len__(self):
         return len(self.targets)
@@ -115,7 +114,9 @@ class Zen(Props):
             if (i.name, i.addr) not in \
               [(names[i], addrs[i]) for i in range(len(names))]:
                 i.alive = False
+        xsleep(0.05)
         self.__ins = [None]+[i for i in range(len(self))]
+        self.sel = None
     
     def minlen(self):
         return max(len(max(
@@ -151,7 +152,7 @@ class Zen(Props):
         terminate()
     
     def delete(self):
-        if self.sel != None:
+        if self.sel:
             self.targets[self.sel].alive = False
             xsleep(0.05)
             self.__ins = [None]+[i for i in range(len(self))]
