@@ -115,7 +115,7 @@ class Zen(Props):
             if (i.name, i.addr) not in \
               [(names[i], addrs[i]) for i in range(len(names))]:
                 i.alive = False
-        self.__ins = [None]+[i for i in range(len(self.targets))]
+        self.__ins = [None]+[i for i in range(len(self))]
     
     def minlen(self):
         return max(len(max(
@@ -153,7 +153,8 @@ class Zen(Props):
     def delete(self):
         if self.sel != None:
             self.targets[self.sel].alive = False
-            self.__ins = [None]+[i for i in range(len(self.targets))]
+            xsleep(0.05)
+            self.__ins = [None]+[i for i in range(len(self))]
             self.sel = None
     
     def refresh(self):
